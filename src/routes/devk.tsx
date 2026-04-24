@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast, Toaster } from "sonner";
 import { Trash2, Plus, ArrowUp, ArrowDown } from "lucide-react";
+import { ImageUpload } from "@/components/ImageUpload";
 
 export const Route = createFileRoute("/devk")({
   head: () => ({ meta: [{ title: "Dev Panel" }, { name: "robots", content: "noindex" }] }),
