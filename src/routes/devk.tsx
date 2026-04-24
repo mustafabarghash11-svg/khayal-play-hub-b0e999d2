@@ -138,14 +138,11 @@ function Panel() {
         <Section title={`الألعاب (${data.games.length})`} action={<Button onClick={addGame} size="sm" className="bg-accent text-accent-foreground"><Plus className="w-4 h-4 ml-1" />لعبة</Button>}>
           {data.games.map((g) => (
             <div key={g.id} className="border border-border rounded-xl p-4 space-y-3">
-              <div className="flex gap-3">
-                <img src={g.image} alt={g.name} className="w-20 h-20 object-cover rounded-lg flex-shrink-0" />
-                <div className="flex-1 grid sm:grid-cols-2 gap-2">
-                  <Input placeholder="الاسم" value={g.name} onChange={(e) => updateGame(g.id, { name: e.target.value })} />
-                  <Input placeholder="الرابط" value={g.link} onChange={(e) => updateGame(g.id, { link: e.target.value })} />
-                </div>
+              <div className="grid sm:grid-cols-2 gap-2">
+                <Input placeholder="الاسم" value={g.name} onChange={(e) => updateGame(g.id, { name: e.target.value })} />
+                <Input placeholder="الرابط" value={g.link} onChange={(e) => updateGame(g.id, { link: e.target.value })} />
               </div>
-              <Input placeholder="رابط الصورة" value={g.image} onChange={(e) => updateGame(g.id, { image: e.target.value })} />
+              <ImageUpload value={g.image} onChange={(v) => updateGame(g.id, { image: v })} placeholder="رابط الصورة أو ارفع ملف" />
               <Input placeholder="الوصف" value={g.description} onChange={(e) => updateGame(g.id, { description: e.target.value })} />
               <Button variant="destructive" size="sm" onClick={() => deleteGame(g.id)}><Trash2 className="w-4 h-4 ml-1" />حذف</Button>
             </div>
@@ -193,7 +190,7 @@ function Panel() {
                     {b.type === "text" && <Textarea value={b.text} onChange={(e) => updateBlock(sec.id, b.id, { text: e.target.value })} placeholder="نص" rows={3} />}
                     {b.type === "image" && (
                       <>
-                        <Input value={b.src} onChange={(e) => updateBlock(sec.id, b.id, { src: e.target.value })} placeholder="رابط الصورة" />
+                        <ImageUpload value={b.src} onChange={(v) => updateBlock(sec.id, b.id, { src: v })} placeholder="رابط الصورة أو ارفع ملف" />
                         <Input value={b.alt} onChange={(e) => updateBlock(sec.id, b.id, { alt: e.target.value })} placeholder="وصف الصورة" />
                       </>
                     )}
