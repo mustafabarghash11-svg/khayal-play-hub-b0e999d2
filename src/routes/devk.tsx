@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useSiteData, defaultData, type Game, type Feature } from "@/lib/khayal-store";
+import { useSiteData, defaultData, normalizeDigits, type Game, type Feature, type CustomSection, type Block } from "@/lib/khayal-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { Toaster } from "@/components/ui/sonner";
+import { toast, Toaster } from "sonner";
+import { Trash2, Plus, ArrowUp, ArrowDown } from "lucide-react";
 
 export const Route = createFileRoute("/devk")({
   head: () => ({ meta: [{ title: "Dev Panel" }, { name: "robots", content: "noindex" }] }),
@@ -16,7 +16,6 @@ export const Route = createFileRoute("/devk")({
 function DevPanel() {
   const [authed, setAuthed] = useState(false);
   const [code, setCode] = useState("");
-  const [data, setData] = useSiteData();
 
   if (!authed) {
     return (
@@ -24,122 +23,222 @@ function DevPanel() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (code === "87") setAuthed(true);
-            else toast.error("كود خاطئ");
+            const cleaned = normalizeDigits(code).trim();
+            if (cleaned === "87") {
+              setAuthed(true);
+              toast.success("مرحباً بك");
+            } else {
+              toast.error("كود خاطئ");
+            }
           }}
           className="w-full max-w-sm bg-card border border-border rounded-2xl p-8 space-y-4"
         >
           <h1 className="text-2xl font-black text-center">🔒 دخول المطور</h1>
           <Input
-            type="password"
+            type="text"
+            inputMode="numeric"
             placeholder="الكود السري"
             value={code}
             onChange={(e) => setCode(e.target.value)}
             className="text-center text-lg"
+            autoFocus
           />
           <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold">
             دخول
           </Button>
         </form>
-        <Toaster />
+        <Toaster richColors />
       </div>
     );
   }
 
+  return <Panel />;
+}
+
+function Panel() {
+  const [data, setData] = useSiteData();
   const update = (patch: Partial<typeof data>) => setData({ ...data, ...patch });
 
-  const updateGame = (id: string, patch: Partial<Game>) => {
-    update({ games: data.games.map((g) => (g.id === id ? { ...g, ...patch } : g)) });
-  };
+  // Games
+  const updateGame = (id: string, patch: Partial<Game>) => update({ games: data.games.map((g) => g.id === id ? { ...g, ...patch } : g) });
   const deleteGame = (id: string) => update({ games: data.games.filter((g) => g.id !== id) });
-  const addGame = () => {
-    const ng: Game = { id: Date.now().toString(), name: "لعبة جديدة", image: "https://placehold.co/600x800/0d3b3e/fff?text=New", link: "#", description: "وصف" };
-    update({ games: [...data.games, ng] });
+  const addGame = () => update({ games: [...data.games, { id: Date.now().toString(), name: "لعبة جديدة", image: "https://placehold.co/600x800/0d3b3e/22d3ee?text=Game", link: "#", description: "وصف اللعبة" }] });
+
+  // Features
+  const updateFeature = (id: string, patch: Partial<Feature>) => update({ features: data.features.map((f) => f.id === id ? { ...f, ...patch } : f) });
+  const deleteFeature = (id: string) => update({ features: data.features.filter((f) => f.id !== id) });
+  const addFeature = () => update({ features: [...data.features, { id: Date.now().toString(), title: "ميزة جديدة", description: "وصف", icon: "✨" }] });
+
+  // Custom sections
+  const addSection = () => {
+    const id = Date.now().toString();
+    update({ customSections: [...data.customSections, { id, slug: `sec-${id}`, title: "قسم جديد", blocks: [] }] });
+  };
+  const updateSection = (id: string, patch: Partial<CustomSection>) => update({ customSections: data.customSections.map((s) => s.id === id ? { ...s, ...patch } : s) });
+  const deleteSection = (id: string) => update({ customSections: data.customSections.filter((s) => s.id !== id) });
+  const moveSection = (id: string, dir: -1 | 1) => {
+    const arr = [...data.customSections];
+    const i = arr.findIndex((s) => s.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= arr.length) return;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    update({ customSections: arr });
   };
 
-  const updateFeature = (id: string, patch: Partial<Feature>) => {
-    update({ features: data.features.map((f) => (f.id === id ? { ...f, ...patch } : f)) });
+  const addBlock = (sectionId: string, type: Block["type"]) => {
+    const id = Date.now().toString();
+    let block: Block;
+    if (type === "heading") block = { id, type, text: "عنوان جديد" };
+    else if (type === "text") block = { id, type, text: "اكتب نصك هنا..." };
+    else if (type === "image") block = { id, type, src: "https://placehold.co/800x500/0d3b3e/22d3ee?text=Image", alt: "صورة" };
+    else block = { id, type, text: "اضغط هنا", link: "#" };
+    updateSection(sectionId, { blocks: [...(data.customSections.find((s) => s.id === sectionId)?.blocks ?? []), block] });
   };
-  const deleteFeature = (id: string) => update({ features: data.features.filter((f) => f.id !== id) });
-  const addFeature = () => {
-    update({ features: [...data.features, { id: Date.now().toString(), title: "ميزة جديدة", description: "وصف", icon: "✨" }] });
+  const updateBlock = (sectionId: string, blockId: string, patch: Partial<Block>) => {
+    const sec = data.customSections.find((s) => s.id === sectionId);
+    if (!sec) return;
+    updateSection(sectionId, { blocks: sec.blocks.map((b) => b.id === blockId ? ({ ...b, ...patch } as Block) : b) });
+  };
+  const deleteBlock = (sectionId: string, blockId: string) => {
+    const sec = data.customSections.find((s) => s.id === sectionId);
+    if (!sec) return;
+    updateSection(sectionId, { blocks: sec.blocks.filter((b) => b.id !== blockId) });
+  };
+  const moveBlock = (sectionId: string, blockId: string, dir: -1 | 1) => {
+    const sec = data.customSections.find((s) => s.id === sectionId);
+    if (!sec) return;
+    const arr = [...sec.blocks];
+    const i = arr.findIndex((b) => b.id === blockId);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= arr.length) return;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    updateSection(sectionId, { blocks: arr });
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-background text-foreground p-6">
-      <div className="max-w-5xl mx-auto space-y-10">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-black">⚙️ لوحة المطور</h1>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => { setData(defaultData); toast.success("تم الاسترجاع"); }}>
-              استرجاع الافتراضي
-            </Button>
+    <div dir="rtl" className="min-h-screen bg-background text-foreground p-4 md:p-6">
+      <div className="max-w-5xl mx-auto space-y-8">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <h1 className="text-2xl md:text-3xl font-black">⚙️ لوحة المطور</h1>
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={() => { if (confirm("استرجاع الإعدادات الافتراضية؟")) { setData(defaultData); toast.success("تم"); } }}>استرجاع</Button>
             <Button asChild variant="outline"><a href="/">عرض الموقع</a></Button>
           </div>
         </div>
 
         {/* Site info */}
-        <section className="bg-card border border-border rounded-2xl p-6 space-y-4">
-          <h2 className="text-xl font-bold">معلومات الموقع</h2>
-          <div>
-            <Label>اسم الموقع</Label>
-            <Input value={data.siteName} onChange={(e) => update({ siteName: e.target.value })} />
-          </div>
-          <div>
-            <Label>الشعار/الوصف</Label>
-            <Textarea value={data.tagline} onChange={(e) => update({ tagline: e.target.value })} />
-          </div>
-          <div>
-            <Label>رابط الديسكورد</Label>
-            <Input value={data.discordLink} onChange={(e) => update({ discordLink: e.target.value })} />
-          </div>
-        </section>
+        <Section title="معلومات الموقع">
+          <Field label="اسم الموقع"><Input value={data.siteName} onChange={(e) => update({ siteName: e.target.value })} /></Field>
+          <Field label="الوصف"><Textarea value={data.tagline} onChange={(e) => update({ tagline: e.target.value })} /></Field>
+          <Field label="رابط الديسكورد"><Input value={data.discordLink} onChange={(e) => update({ discordLink: e.target.value })} /></Field>
+        </Section>
 
         {/* Games */}
-        <section className="bg-card border border-border rounded-2xl p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">الألعاب ({data.games.length})</h2>
-            <Button onClick={addGame} className="bg-accent text-accent-foreground">+ إضافة لعبة</Button>
-          </div>
-          <div className="space-y-4">
-            {data.games.map((g) => (
-              <div key={g.id} className="border border-border rounded-xl p-4 grid md:grid-cols-[100px_1fr_auto] gap-4 items-start">
-                <img src={g.image} alt={g.name} className="w-full md:w-24 h-24 object-cover rounded-lg" />
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <div><Label>الاسم</Label><Input value={g.name} onChange={(e) => updateGame(g.id, { name: e.target.value })} /></div>
-                  <div><Label>الرابط</Label><Input value={g.link} onChange={(e) => updateGame(g.id, { link: e.target.value })} /></div>
-                  <div className="sm:col-span-2"><Label>رابط الصورة</Label><Input value={g.image} onChange={(e) => updateGame(g.id, { image: e.target.value })} /></div>
-                  <div className="sm:col-span-2"><Label>الوصف</Label><Input value={g.description} onChange={(e) => updateGame(g.id, { description: e.target.value })} /></div>
+        <Section title={`الألعاب (${data.games.length})`} action={<Button onClick={addGame} size="sm" className="bg-accent text-accent-foreground"><Plus className="w-4 h-4 ml-1" />لعبة</Button>}>
+          {data.games.map((g) => (
+            <div key={g.id} className="border border-border rounded-xl p-4 space-y-3">
+              <div className="flex gap-3">
+                <img src={g.image} alt={g.name} className="w-20 h-20 object-cover rounded-lg flex-shrink-0" />
+                <div className="flex-1 grid sm:grid-cols-2 gap-2">
+                  <Input placeholder="الاسم" value={g.name} onChange={(e) => updateGame(g.id, { name: e.target.value })} />
+                  <Input placeholder="الرابط" value={g.link} onChange={(e) => updateGame(g.id, { link: e.target.value })} />
                 </div>
-                <Button variant="destructive" size="sm" onClick={() => deleteGame(g.id)}>حذف</Button>
               </div>
-            ))}
-          </div>
-        </section>
+              <Input placeholder="رابط الصورة" value={g.image} onChange={(e) => updateGame(g.id, { image: e.target.value })} />
+              <Input placeholder="الوصف" value={g.description} onChange={(e) => updateGame(g.id, { description: e.target.value })} />
+              <Button variant="destructive" size="sm" onClick={() => deleteGame(g.id)}><Trash2 className="w-4 h-4 ml-1" />حذف</Button>
+            </div>
+          ))}
+        </Section>
 
         {/* Features */}
-        <section className="bg-card border border-border rounded-2xl p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">المميزات ({data.features.length})</h2>
-            <Button onClick={addFeature} className="bg-accent text-accent-foreground">+ إضافة ميزة</Button>
-          </div>
-          <div className="space-y-4">
-            {data.features.map((f) => (
-              <div key={f.id} className="border border-border rounded-xl p-4 grid md:grid-cols-[80px_1fr_auto] gap-4 items-center">
-                <Input value={f.icon} onChange={(e) => updateFeature(f.id, { icon: e.target.value })} className="text-3xl text-center" />
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <div><Label>العنوان</Label><Input value={f.title} onChange={(e) => updateFeature(f.id, { title: e.target.value })} /></div>
-                  <div><Label>الوصف</Label><Input value={f.description} onChange={(e) => updateFeature(f.id, { description: e.target.value })} /></div>
-                </div>
-                <Button variant="destructive" size="sm" onClick={() => deleteFeature(f.id)}>حذف</Button>
+        <Section title={`المميزات (${data.features.length})`} action={<Button onClick={addFeature} size="sm" className="bg-accent text-accent-foreground"><Plus className="w-4 h-4 ml-1" />ميزة</Button>}>
+          {data.features.map((f) => (
+            <div key={f.id} className="border border-border rounded-xl p-4 grid grid-cols-[60px_1fr] gap-3 items-start">
+              <Input value={f.icon} onChange={(e) => updateFeature(f.id, { icon: e.target.value })} className="text-2xl text-center h-full" />
+              <div className="space-y-2">
+                <Input placeholder="العنوان" value={f.title} onChange={(e) => updateFeature(f.id, { title: e.target.value })} />
+                <Input placeholder="الوصف" value={f.description} onChange={(e) => updateFeature(f.id, { description: e.target.value })} />
+                <Button variant="destructive" size="sm" onClick={() => deleteFeature(f.id)}><Trash2 className="w-4 h-4 ml-1" />حذف</Button>
               </div>
-            ))}
-          </div>
-        </section>
+            </div>
+          ))}
+        </Section>
 
-        <p className="text-center text-sm text-muted-foreground">التغييرات تُحفظ تلقائياً في المتصفح</p>
+        {/* Custom sections */}
+        <Section title={`أقسام مخصصة (${data.customSections.length})`} action={<Button onClick={addSection} size="sm" className="bg-accent text-accent-foreground"><Plus className="w-4 h-4 ml-1" />قسم</Button>}>
+          {data.customSections.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">لا توجد أقسام بعد. أضف واحداً وابدأ بإضافة نصوص، صور، وأزرار.</p>}
+          {data.customSections.map((sec, idx) => (
+            <div key={sec.id} className="border-2 border-accent/30 rounded-2xl p-4 space-y-3 bg-background/40">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Input value={sec.title} onChange={(e) => updateSection(sec.id, { title: e.target.value })} placeholder="عنوان القسم" className="flex-1 min-w-[150px] font-bold" />
+                <Button size="icon" variant="outline" onClick={() => moveSection(sec.id, -1)} disabled={idx === 0}><ArrowUp className="w-4 h-4" /></Button>
+                <Button size="icon" variant="outline" onClick={() => moveSection(sec.id, 1)} disabled={idx === data.customSections.length - 1}><ArrowDown className="w-4 h-4" /></Button>
+                <Button size="icon" variant="destructive" onClick={() => deleteSection(sec.id)}><Trash2 className="w-4 h-4" /></Button>
+              </div>
+
+              <div className="space-y-2 pl-2 border-r-2 border-accent/20 pr-3">
+                {sec.blocks.map((b, bi) => (
+                  <div key={b.id} className="bg-card border border-border rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-accent">{labelFor(b.type)}</span>
+                      <div className="flex gap-1">
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => moveBlock(sec.id, b.id, -1)} disabled={bi === 0}><ArrowUp className="w-3 h-3" /></Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => moveBlock(sec.id, b.id, 1)} disabled={bi === sec.blocks.length - 1}><ArrowDown className="w-3 h-3" /></Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => deleteBlock(sec.id, b.id)}><Trash2 className="w-3 h-3" /></Button>
+                      </div>
+                    </div>
+                    {b.type === "heading" && <Input value={b.text} onChange={(e) => updateBlock(sec.id, b.id, { text: e.target.value })} placeholder="عنوان" />}
+                    {b.type === "text" && <Textarea value={b.text} onChange={(e) => updateBlock(sec.id, b.id, { text: e.target.value })} placeholder="نص" rows={3} />}
+                    {b.type === "image" && (
+                      <>
+                        <Input value={b.src} onChange={(e) => updateBlock(sec.id, b.id, { src: e.target.value })} placeholder="رابط الصورة" />
+                        <Input value={b.alt} onChange={(e) => updateBlock(sec.id, b.id, { alt: e.target.value })} placeholder="وصف الصورة" />
+                      </>
+                    )}
+                    {b.type === "button" && (
+                      <>
+                        <Input value={b.text} onChange={(e) => updateBlock(sec.id, b.id, { text: e.target.value })} placeholder="نص الزر" />
+                        <Input value={b.link} onChange={(e) => updateBlock(sec.id, b.id, { link: e.target.value })} placeholder="الرابط" />
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
+                <Button size="sm" variant="outline" onClick={() => addBlock(sec.id, "heading")}>+ عنوان</Button>
+                <Button size="sm" variant="outline" onClick={() => addBlock(sec.id, "text")}>+ نص</Button>
+                <Button size="sm" variant="outline" onClick={() => addBlock(sec.id, "image")}>+ صورة</Button>
+                <Button size="sm" variant="outline" onClick={() => addBlock(sec.id, "button")}>+ زر</Button>
+              </div>
+            </div>
+          ))}
+        </Section>
+
+        <p className="text-center text-xs text-muted-foreground pb-6">التغييرات تُحفظ تلقائياً</p>
       </div>
-      <Toaster />
+      <Toaster richColors />
     </div>
   );
+}
+
+function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section className="bg-card border border-border rounded-2xl p-5 space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h2 className="text-lg font-bold">{title}</h2>
+        {action}
+      </div>
+      <div className="space-y-3">{children}</div>
+    </section>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div className="space-y-1.5"><Label>{label}</Label>{children}</div>;
+}
+
+function labelFor(t: Block["type"]) {
+  return t === "heading" ? "عنوان" : t === "text" ? "نص" : t === "image" ? "صورة" : "زر";
 }
