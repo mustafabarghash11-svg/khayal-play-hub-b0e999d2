@@ -96,13 +96,14 @@ export type SiteData = {
   customSections: CustomSection[];
 };
 
-export type SiteData = {
-const STORAGE_KEY = "khayal-site-data-v2";
+const STORAGE_KEY = "khayal-site-data-v3";
 
 export const defaultData: SiteData = {
   siteName: "Khayal Community",
   tagline: "مجتمع الخيال للألعاب — حيث يلتقي اللاعبون الحقيقيون",
   discordLink: "https://discord.gg/khayal",
+  discordServerId: "",
+  showVisitorCounter: true,
   games: [
     { id: "1", name: "Fortnite", image: game1, link: "#", description: "باتل رويال أسطوري" },
     { id: "2", name: "Minecraft", image: game2, link: "#", description: "عالم لا حدود له" },
@@ -117,7 +118,6 @@ export const defaultData: SiteData = {
   ],
   serverStats: [
     { id: "s1", label: "عضو", value: "5,000+", icon: "👥" },
-    { id: "s2", label: "متصل الآن", value: "850+", icon: "🟢" },
     { id: "s3", label: "بطولة شهرياً", value: "12", icon: "🏆" },
     { id: "s4", label: "قنوات", value: "40+", icon: "💬" },
   ],
@@ -127,8 +127,30 @@ export const defaultData: SiteData = {
     { id: "p3", title: "إيفنتات أسبوعية", description: "أنشطة وجوائز كل أسبوع للأعضاء النشطين", icon: "🎉" },
     { id: "p4", title: "دعم 24/7", description: "فريق إدارة متواجد على مدار الساعة", icon: "🛡️" },
   ],
+  streamers: [],
+  upcomingEvent: null,
+  leaderboard: [],
+  hallOfFame: [],
   customSections: [],
 };
+
+export function loadData(): SiteData {
+  if (typeof window === "undefined") return defaultData;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultData;
+    const parsed = JSON.parse(raw);
+    return {
+      ...defaultData,
+      ...parsed,
+      customSections: parsed.customSections ?? [],
+      serverStats: parsed.serverStats ?? defaultData.serverStats,
+      serverPerks: parsed.serverPerks ?? defaultData.serverPerks,
+      streamers: parsed.streamers ?? [],
+      upcomingEvent: parsed.upcomingEvent ?? null,
+      leaderboard: parsed.leaderboard ?? [],
+      hallOfFame: parsed.hallOfFame ?? [],
+    };
 
 export function loadData(): SiteData {
   if (typeof window === "undefined") return defaultData;
