@@ -46,6 +46,56 @@ export type ServerPerk = {
   icon: string;
 };
 
+export type Streamer = {
+  id: string;
+  name: string;
+  image: string;
+  platform: string; // Twitch, YouTube, Kick, TikTok...
+  link: string;
+  isLive: boolean;
+};
+
+export type UpcomingEvent = {
+  id: string;
+  title: string;
+  description: string;
+  date: string; // ISO datetime
+};
+
+export type LeaderboardEntry = {
+  id: string;
+  rank: number;
+  name: string;
+  image: string;
+  points: number;
+  badge: string;
+};
+
+export type HallOfFameEntry = {
+  id: string;
+  championName: string;
+  image: string;
+  tournament: string;
+  year: string;
+};
+
+export type SiteData = {
+  siteName: string;
+  tagline: string;
+  discordLink: string;
+  discordServerId: string; // for live member count widget
+  showVisitorCounter: boolean;
+  games: Game[];
+  features: Feature[];
+  serverStats: ServerStat[];
+  serverPerks: ServerPerk[];
+  streamers: Streamer[];
+  upcomingEvent: UpcomingEvent | null;
+  leaderboard: LeaderboardEntry[];
+  hallOfFame: HallOfFameEntry[];
+  customSections: CustomSection[];
+};
+
 export type SiteData = {
   siteName: string;
   tagline: string;
