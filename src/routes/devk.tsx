@@ -77,6 +77,21 @@ function Panel() {
   const deletePerk = (id: string) => update({ serverPerks: data.serverPerks.filter((p) => p.id !== id) });
   const addPerk = () => update({ serverPerks: [...data.serverPerks, { id: Date.now().toString(), title: "ميزة جديدة", description: "وصف", icon: "✨" }] });
 
+  // Streamers
+  const updateStreamer = (id: string, patch: Partial<Streamer>) => update({ streamers: data.streamers.map((s) => s.id === id ? { ...s, ...patch } : s) });
+  const deleteStreamer = (id: string) => update({ streamers: data.streamers.filter((s) => s.id !== id) });
+  const addStreamer = () => update({ streamers: [...data.streamers, { id: Date.now().toString(), name: "اسم الستريمر", image: "", platform: "Twitch", link: "https://", isLive: false }] });
+
+  // Leaderboard
+  const updateLeader = (id: string, patch: Partial<LeaderboardEntry>) => update({ leaderboard: data.leaderboard.map((p) => p.id === id ? { ...p, ...patch } : p) });
+  const deleteLeader = (id: string) => update({ leaderboard: data.leaderboard.filter((p) => p.id !== id) });
+  const addLeader = () => update({ leaderboard: [...data.leaderboard, { id: Date.now().toString(), rank: data.leaderboard.length + 1, name: "اسم اللاعب", image: "", points: 0, badge: "" }] });
+
+  // Hall of Fame
+  const updateHof = (id: string, patch: Partial<HallOfFameEntry>) => update({ hallOfFame: data.hallOfFame.map((c) => c.id === id ? { ...c, ...patch } : c) });
+  const deleteHof = (id: string) => update({ hallOfFame: data.hallOfFame.filter((c) => c.id !== id) });
+  const addHof = () => update({ hallOfFame: [...data.hallOfFame, { id: Date.now().toString(), championName: "اسم البطل", image: "", tournament: "اسم البطولة", year: new Date().getFullYear().toString() }] });
+
   // Custom sections
   const addSection = () => {
     const id = Date.now().toString();
