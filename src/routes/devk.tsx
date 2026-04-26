@@ -423,4 +423,15 @@ function Panel() {
                 </div>
               </Card>
 
-              {/* باقي محتوى
+                       {/* باقي التبويبات (games, community, accounts, points, shop) */}
+          {activeTab !== "overview" && activeTab !== "site" && (
+            <div className="text-center text-[#8b9ab0] py-20">
+              تبويب "{activeTabLabel}" قيد التطوير
+            </div>
+          )}
+
+        </main>
+      </div>
+    </div>
+  );
+          }
