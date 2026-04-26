@@ -5,15 +5,17 @@
 //     error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... } }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
-import { defineConfig } from 'vite'
 
 export default defineConfig({
-  plugins: [
-    tanstackStart({
-      router: {
-        enableRouteGeneration: false, // أضف هذا
-      }
-    })
-  ]
-})
-export default defineConfig();
+  vite: {
+    plugins: [
+      // لا تضف tanstackStart هنا لأنه موجود مسبقاً
+      // بدلاً من ذلك، إذا كنت تريد تمرير خيارات إضافية لـ tanstackStart،
+      // فستحتاج إلى طريقة مختلفة حسب الوثائق
+    ],
+    // أي إعدادات إضافية لـ Vite تحتاجها
+  },
+  // إذا كان التطبيق يتطلب enableRouteGeneration = false،
+  // فقد تحتاج إلى تعديل التكوين بطريقة مختلفة،
+  // لأن الإعدادات الأساسية تدار بواسطة @lovable.dev
+});
