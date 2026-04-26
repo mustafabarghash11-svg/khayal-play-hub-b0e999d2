@@ -421,4 +421,4 @@ function Panel() {
                     <Input value={data.siteName} onChange={(e) => update({ siteName: e.target.value })} className={inputCls} />
                   </Field>
                   <Field label="الوصف">
-                    <Textarea valu
+                    <Textarea value={data.description || ""} onChange={(e) => update({ description: e.target.value })} className={inputCls} />
