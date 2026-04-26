@@ -419,6 +419,4 @@ function Panel() {
                 <div className="space-y-4">
                   <Field label="اسم الموقع">
                     <Input value={data.siteName} onChange={(e) => update({ siteName: e.target.value })} className={inputCls} />
-                  </Field>
-                  <Field label="الوصف">
                     <Textarea value={data.description || ""} onChange={(e) => update({ description: e.target.value })} className={inputCls} />
