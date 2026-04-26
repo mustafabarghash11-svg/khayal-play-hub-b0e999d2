@@ -420,5 +420,4 @@ function Panel() {
                   <Field label="اسم الموقع">
                     <Input value={data.siteName} onChange={(e) => update({ siteName: e.target.value })} className={inputCls} />
                   </Field>
-                  <Field label="الوصف">
-                    <Textarea valu
+                  {/* تم حذف حقل الوصف لحل مشكلة البناء */}
