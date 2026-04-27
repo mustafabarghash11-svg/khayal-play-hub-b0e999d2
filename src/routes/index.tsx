@@ -7,7 +7,11 @@ import { VisitorCounter } from "@/components/VisitorCounter";
 import { DiscordLiveCount } from "@/components/DiscordLiveCount";
 import { EventCountdown } from "@/components/EventCountdown";
 import heroBg from "@/assets/hero-bg.jpg";
+import DevkLayout from "@/components/devk/DevkLayout";
 
+export default function DevkPage() {
+  return <DevkLayout />;
+}
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
