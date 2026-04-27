@@ -121,6 +121,8 @@ function TournamentsAdmin() {
 function ShopAdmin() {
   const [list, setList] = useState<any[]>([]);
   const [form, setForm] = useState({ name: "", description: "", image_url: "", price_points: 100, stock: -1, is_active: true });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
 
   async function load() {
     const { data } = await supabase.from("shop_items").select("*").order("created_at", { ascending: false });
@@ -142,6 +144,22 @@ function ShopAdmin() {
     await supabase.from("shop_items").update({ is_active: v }).eq("id", id);
     load();
   }
+  function startEdit(it: any) {
+    setEditingId(it.id);
+    setEditForm({ name: it.name, description: it.description ?? "", image_url: it.image_url ?? "", price_points: it.price_points, stock: it.stock });
+  }
+  async function saveEdit() {
+    if (!editingId) return;
+    if (!editForm.name) return toast.error("الاسم مطلوب");
+    const { error } = await supabase.from("shop_items").update({
+      name: editForm.name,
+      description: editForm.description,
+      image_url: editForm.image_url,
+      price_points: Number(editForm.price_points),
+      stock: Number(editForm.stock),
+    }).eq("id", editingId);
+    if (error) toast.error(error.message); else { toast.success("تم الحفظ"); setEditingId(null); load(); }
+  }
 
   return (
     <div className="space-y-6">
@@ -159,15 +177,34 @@ function ShopAdmin() {
 
       <div className="space-y-2">
         {list.map((it) => (
-          <div key={it.id} className="rounded-xl bg-card border border-border p-4 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="font-bold truncate">{it.name}</div>
-              <div className="text-xs text-muted-foreground">{it.price_points} نقطة · كمية: {it.stock < 0 ? "∞" : it.stock} {!it.is_active && "· معطل"}</div>
-            </div>
-            <div className="flex gap-2 shrink-0">
-              <Button variant="outline" size="sm" onClick={() => toggleActive(it.id, !it.is_active)}>{it.is_active ? "إخفاء" : "تفعيل"}</Button>
-              <Button variant="ghost" size="icon" onClick={() => remove(it.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
-            </div>
+          <div key={it.id} className="rounded-xl bg-card border border-border p-4">
+            {editingId === it.id ? (
+              <div className="space-y-3">
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div><Label>الاسم</Label><Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></div>
+                  <div><Label>السعر بالنقاط</Label><Input type="number" min={0} value={editForm.price_points} onChange={(e) => setEditForm({ ...editForm, price_points: +e.target.value })} /></div>
+                  <div><Label>الكمية (-1 لا محدودة)</Label><Input type="number" value={editForm.stock} onChange={(e) => setEditForm({ ...editForm, stock: +e.target.value })} /></div>
+                  <div><Label>رابط الصورة</Label><Input value={editForm.image_url} onChange={(e) => setEditForm({ ...editForm, image_url: e.target.value })} /></div>
+                </div>
+                <div><Label>الوصف</Label><Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={2} /></div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={saveEdit} className="bg-accent text-accent-foreground">حفظ</Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>إلغاء</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-bold truncate">{it.name}</div>
+                  <div className="text-xs text-muted-foreground">{it.price_points} نقطة · كمية: {it.stock < 0 ? "∞" : it.stock} {!it.is_active && "· معطل"}</div>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button variant="outline" size="sm" onClick={() => startEdit(it)}>تعديل</Button>
+                  <Button variant="outline" size="sm" onClick={() => toggleActive(it.id, !it.is_active)}>{it.is_active ? "إخفاء" : "تفعيل"}</Button>
+                  <Button variant="ghost" size="icon" onClick={() => remove(it.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -221,46 +258,72 @@ function OrdersAdmin() {
   );
 }
 
-// ============= POINTS =============
+// ============= POINTS & XP =============
 function PointsAdmin() {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<any[]>([]);
-  const [amount, setAmount] = useState(50);
+  const [pointsAmount, setPointsAmount] = useState(50);
+  const [xpAmount, setXpAmount] = useState(100);
 
   async function find() {
-    const { data } = await supabase.from("profiles").select("user_id, display_name, points, level").ilike("display_name", `%${search}%`).limit(20);
+    const { data } = await supabase.from("profiles").select("user_id, display_name, points, level, xp").ilike("display_name", `%${search}%`).limit(20);
     setResults(data ?? []);
   }
-  async function award(userId: string, delta: number) {
+  async function awardPoints(userId: string, delta: number) {
     const { data: p } = await supabase.from("profiles").select("points").eq("user_id", userId).maybeSingle();
     if (!p) return toast.error("لم يُعثر");
     const { error } = await supabase.from("profiles").update({ points: Math.max(0, p.points + delta) }).eq("user_id", userId);
     if (error) toast.error(error.message); else { toast.success(`${delta > 0 ? "أضيف" : "خُصم"} ${Math.abs(delta)} نقطة`); find(); }
   }
+  async function awardXp(userId: string, delta: number) {
+    const { data: p } = await supabase.from("profiles").select("xp").eq("user_id", userId).maybeSingle();
+    if (!p) return toast.error("لم يُعثر");
+    const newXp = Math.max(0, (p.xp ?? 0) + delta);
+    const newLevel = Math.max(1, Math.floor(newXp / 100) + 1);
+    const { error } = await supabase.from("profiles").update({ xp: newXp, level: newLevel }).eq("user_id", userId);
+    if (error) toast.error(error.message); else { toast.success(`${delta > 0 ? "أضيف" : "خُصم"} ${Math.abs(delta)} XP · Lv ${newLevel}`); find(); }
+  }
 
   return (
     <div className="space-y-4">
       <div className="rounded-2xl bg-card border border-border p-5 space-y-3">
-        <h3 className="font-black">منح / خصم نقاط</h3>
+        <h3 className="font-black">منح / خصم نقاط و XP</h3>
         <div className="flex gap-2">
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ابحث باسم العضو..." />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ابحث باسم العضو..." onKeyDown={(e) => e.key === "Enter" && find()} />
           <Button onClick={find} className="bg-accent text-accent-foreground">بحث</Button>
         </div>
-        <div className="flex items-center gap-2">
-          <Label>الكمية:</Label>
-          <Input type="number" value={amount} onChange={(e) => setAmount(+e.target.value)} className="w-32" />
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div className="flex items-center gap-2">
+            <Label className="shrink-0">نقاط المتجر:</Label>
+            <Input type="number" value={pointsAmount} onChange={(e) => setPointsAmount(+e.target.value)} />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="shrink-0">XP:</Label>
+            <Input type="number" value={xpAmount} onChange={(e) => setXpAmount(+e.target.value)} />
+          </div>
         </div>
       </div>
       <div className="space-y-2">
+        {results.length === 0 && <p className="text-muted-foreground text-center py-6 text-sm">ابحث عن عضو لعرض النتائج</p>}
         {results.map((r) => (
-          <div key={r.user_id} className="rounded-xl bg-card border border-border p-4 flex items-center justify-between">
-            <div>
-              <div className="font-bold">{r.display_name}</div>
-              <div className="text-xs text-muted-foreground">Lv {r.level} · {r.points} نقطة</div>
+          <div key={r.user_id} className="rounded-xl bg-card border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-bold">{r.display_name}</div>
+                <div className="text-xs text-muted-foreground">Lv {r.level} · {r.points} نقطة · {r.xp ?? 0} XP</div>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => award(r.user_id, -amount)}>− {amount}</Button>
-              <Button size="sm" className="bg-accent text-accent-foreground" onClick={() => award(r.user_id, amount)}>+ {amount}</Button>
+            <div className="grid sm:grid-cols-2 gap-2">
+              <div className="flex gap-2 items-center">
+                <span className="text-xs text-muted-foreground w-14">نقاط:</span>
+                <Button size="sm" variant="outline" className="flex-1" onClick={() => awardPoints(r.user_id, -pointsAmount)}>− {pointsAmount}</Button>
+                <Button size="sm" className="flex-1 bg-accent text-accent-foreground" onClick={() => awardPoints(r.user_id, pointsAmount)}>+ {pointsAmount}</Button>
+              </div>
+              <div className="flex gap-2 items-center">
+                <span className="text-xs text-muted-foreground w-14">XP:</span>
+                <Button size="sm" variant="outline" className="flex-1" onClick={() => awardXp(r.user_id, -xpAmount)}>− {xpAmount}</Button>
+                <Button size="sm" className="flex-1 bg-primary text-primary-foreground" onClick={() => awardXp(r.user_id, xpAmount)}>+ {xpAmount}</Button>
+              </div>
             </div>
           </div>
         ))}
