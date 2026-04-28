@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast, Toaster } from "sonner";
-import { Trash2, Plus, ArrowUp, ArrowDown } from "lucide-react";
+import { Trash2, Plus, ArrowUp, ArrowDown, Settings, Gamepad2, BarChart3, Sparkles, Video, Trophy, Crown, Layers, Users, Coins, ShoppingBag, Package } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { ImageUpload } from "@/components/ImageUpload";
+import { MembersAdmin, PointsAdmin, TournamentsAdmin, ShopAdmin, OrdersAdmin } from "@/routes/admin";
 
 export const Route = createFileRoute("/devk")({
   head: () => ({ meta: [{ title: "Dev Panel" }, { name: "robots", content: "noindex" }] }),
