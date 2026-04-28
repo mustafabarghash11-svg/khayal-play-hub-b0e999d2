@@ -7,11 +7,7 @@ import { VisitorCounter } from "@/components/VisitorCounter";
 import { DiscordLiveCount } from "@/components/DiscordLiveCount";
 import { EventCountdown } from "@/components/EventCountdown";
 import heroBg from "@/assets/hero-bg.jpg";
-import DevkLayout from "@/components/devk/DevkLayout";
 
-export default function DevkPage() {
-  return <DevkLayout />;
-}
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -49,6 +45,7 @@ function Home() {
             <Button asChild size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-base px-8 shadow-[0_0_40px_oklch(0.65_0.18_215/0.5)]">
               <a href={safeHref(data.discordLink)} target="_blank" rel="noreferrer">انضم للديسكورد</a>
             </Button>
+            {data.discordServerId && <DiscordLiveCount serverId={data.discordServerId} />}
             {data.showVisitorCounter && <VisitorCounter />}
           </div>
         </div>
@@ -57,15 +54,14 @@ function Home() {
       {/* Event countdown */}
       {data.upcomingEvent && <EventCountdown event={data.upcomingEvent} />}
 
-      {/* Server stats + Discord live count */}
-      {(data.serverStats.length > 0 || data.discordServerId) && (
+      {/* Server stats */}
+      {data.serverStats.length > 0 && (
         <section className="py-20 px-6 max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <p className="text-accent font-bold tracking-widest text-sm mb-3">// STATS</p>
             <h2 className="text-3xl md:text-5xl font-black">إحصائيات السيرفر</h2>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-            {data.discordServerId && <DiscordLiveCount serverId={data.discordServerId} />}
             {data.serverStats.map((s) => (
               <div
                 key={s.id}
@@ -109,4 +105,4 @@ function Home() {
       </footer>
     </div>
   );
-}
+          }
