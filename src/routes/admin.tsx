@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Trophy, ShoppingBag, Package, Users, Sparkles } from "lucide-react";
 import { toast, Toaster } from "sonner";
 
 export const Route = createFileRoute("/admin")({
