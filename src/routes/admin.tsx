@@ -54,7 +54,7 @@ function AdminPage() {
 }
 
 // ============= TOURNAMENTS =============
-function TournamentsAdmin() {
+export function TournamentsAdmin() {
   const [list, setList] = useState<any[]>([]);
   const [form, setForm] = useState({ title: "", game: "", description: "", image_url: "", start_date: "", max_participants: 16, prize: "", status: "open" });
 
@@ -120,7 +120,7 @@ function TournamentsAdmin() {
 }
 
 // ============= SHOP =============
-function ShopAdmin() {
+export function ShopAdmin() {
   const [list, setList] = useState<any[]>([]);
   const [form, setForm] = useState({ name: "", description: "", image_url: "", price_points: 100, stock: -1, is_active: true });
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -215,7 +215,7 @@ function ShopAdmin() {
 }
 
 // ============= ORDERS =============
-function OrdersAdmin() {
+export function OrdersAdmin() {
   const [list, setList] = useState<any[]>([]);
 
   async function load() {
@@ -261,7 +261,7 @@ function OrdersAdmin() {
 }
 
 // ============= POINTS & XP =============
-function PointsAdmin() {
+export function PointsAdmin() {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<any[]>([]);
   const [pointsAmount, setPointsAmount] = useState(50);
@@ -335,7 +335,7 @@ function PointsAdmin() {
 }
 
 // ============= MEMBERS =============
-function MembersAdmin() {
+export function MembersAdmin() {
   const [search, setSearch] = useState("");
   const [list, setList] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
