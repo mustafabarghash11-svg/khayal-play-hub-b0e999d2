@@ -1,12 +1,22 @@
 import type { ReactNode } from "react";
+import { DiscordLiveCount } from "@/components/DiscordLiveCount";
+import { useSiteData } from "@/lib/khayal-store";
 
 type Props = { activeTab: string };
 
 export default function ContentArea({ activeTab }: Props) {
+  const [data] = useSiteData();
+
   return (
     <div className="flex-1 p-6 overflow-y-auto">
       {activeTab === "games" && <Section title="🎮 إدارة الألعاب" />}
-      {activeTab === "stats" && <Section title="📊 الإحصائيات" />}
+      {activeTab === "stats" && (
+        <Section title="📊 الإحصائيات">
+          {data.discordServerId && (
+            <DiscordLiveCount serverId={data.discordServerId} />
+          )}
+        </Section>
+      )}
       {activeTab === "perks" && <Section title="✨ المميزات" />}
       {activeTab === "streamers" && <Section title="🎥 الستريمرز" />}
       {activeTab === "leaderboard" && <Section title="🏆 التوب" />}
@@ -28,4 +38,4 @@ function Section({ title, children }: { title: string; children?: ReactNode }) {
       </div>
     </div>
   );
-}
+        }
