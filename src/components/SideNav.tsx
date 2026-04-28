@@ -81,8 +81,6 @@ export function SideNav() {
               onClick={() => setOpen(false)}
               className="flex items-center gap-2 px-4 py-3 rounded-lg text-base text-yellow-500 hover:bg-yellow-500/10 transition-colors"
             >
-              <Shield className="w-4 h-4" /> لوحة الإدارة
-            </Link>
           )}
 
           {data.customSections.length > 0 && (
