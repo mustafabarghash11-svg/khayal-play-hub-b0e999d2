@@ -102,7 +102,7 @@ export const defaultData: SiteData = {
   siteName: "Khayal Community",
   tagline: "مجتمع الخيال للألعاب — حيث يلتقي اللاعبون الحقيقيون",
   discordLink: "https://discord.gg/khayal",
-  discordServerId: "",
+  discordServerId: "801068128766",
   showVisitorCounter: true,
   games: [
     { id: "1", name: "Fortnite", image: game1, link: "#", description: "باتل رويال أسطوري" },
@@ -194,4 +194,5 @@ export function safeHref(url: string | undefined | null): string {
     // fall through
   }
   return "#";
-}
+  }
+     
