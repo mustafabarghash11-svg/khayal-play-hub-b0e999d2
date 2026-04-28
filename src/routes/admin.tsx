@@ -333,3 +333,114 @@ function PointsAdmin() {
     </div>
   );
 }
+
+// ============= MEMBERS =============
+function MembersAdmin() {
+  const [search, setSearch] = useState("");
+  const [list, setList] = useState<any[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
+  const [roles, setRoles] = useState<Record<string, string>>({});
+
+  async function load() {
+    let q = supabase.from("profiles").select("*").order("xp", { ascending: false }).limit(50);
+    if (search.trim()) q = supabase.from("profiles").select("*").or(`display_name.ilike.%${search}%,discord_username.ilike.%${search}%`).limit(50);
+    const { data } = await q;
+    setList(data ?? []);
+    if (data && data.length) {
+      const { data: rs } = await supabase.from("user_roles").select("user_id, role").in("user_id", data.map((d) => d.user_id));
+      const map: Record<string, string> = {};
+      (rs ?? []).forEach((r: any) => { map[r.user_id] = r.role; });
+      setRoles(map);
+    }
+  }
+  useEffect(() => { load(); }, []);
+
+  function startEdit(p: any) {
+    setEditingId(p.user_id);
+    setEditForm({
+      display_name: p.display_name ?? "",
+      discord_username: p.discord_username ?? "",
+      favorite_game: p.favorite_game ?? "",
+      bio: p.bio ?? "",
+      avatar_url: p.avatar_url ?? "",
+      points: p.points ?? 0,
+      xp: p.xp ?? 0,
+      level: p.level ?? 1,
+    });
+  }
+  async function saveEdit() {
+    if (!editingId) return;
+    const { error } = await supabase.from("profiles").update({
+      display_name: editForm.display_name,
+      discord_username: editForm.discord_username || null,
+      favorite_game: editForm.favorite_game || null,
+      bio: editForm.bio || null,
+      avatar_url: editForm.avatar_url || null,
+      points: Math.max(0, Number(editForm.points) || 0),
+      xp: Math.max(0, Number(editForm.xp) || 0),
+      level: Math.max(1, Number(editForm.level) || 1),
+    }).eq("user_id", editingId);
+    if (error) toast.error(error.message); else { toast.success("تم الحفظ"); setEditingId(null); load(); }
+  }
+  async function changeRole(userId: string, role: string) {
+    await supabase.from("user_roles").delete().eq("user_id", userId);
+    const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: role as any });
+    if (error) toast.error(error.message); else { toast.success("تم تغيير الرتبة"); load(); }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl bg-card border border-border p-5">
+        <div className="flex gap-2">
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ابحث بالاسم أو الديسكورد..." onKeyDown={(e) => e.key === "Enter" && load()} />
+          <Button onClick={load} className="bg-accent text-accent-foreground">بحث</Button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {list.map((p) => (
+          <div key={p.user_id} className="rounded-xl bg-card border border-border p-4">
+            {editingId === p.user_id ? (
+              <div className="space-y-3">
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div><Label>الاسم</Label><Input value={editForm.display_name} onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })} /></div>
+                  <div><Label>Discord</Label><Input value={editForm.discord_username} onChange={(e) => setEditForm({ ...editForm, discord_username: e.target.value })} /></div>
+                  <div><Label>اللعبة المفضلة</Label><Input value={editForm.favorite_game} onChange={(e) => setEditForm({ ...editForm, favorite_game: e.target.value })} /></div>
+                  <div><Label>رابط الصورة</Label><Input value={editForm.avatar_url} onChange={(e) => setEditForm({ ...editForm, avatar_url: e.target.value })} /></div>
+                  <div><Label>النقاط</Label><Input type="number" value={editForm.points} onChange={(e) => setEditForm({ ...editForm, points: +e.target.value })} /></div>
+                  <div><Label>XP</Label><Input type="number" value={editForm.xp} onChange={(e) => setEditForm({ ...editForm, xp: +e.target.value })} /></div>
+                  <div><Label>المستوى</Label><Input type="number" min={1} value={editForm.level} onChange={(e) => setEditForm({ ...editForm, level: +e.target.value })} /></div>
+                </div>
+                <div><Label>نبذة</Label><Textarea value={editForm.bio} onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })} rows={2} /></div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={saveEdit} className="bg-accent text-accent-foreground">حفظ</Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>إلغاء</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  {p.avatar_url && <img src={p.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />}
+                  <div className="min-w-0">
+                    <div className="font-bold truncate">{p.display_name}</div>
+                    <div className="text-xs text-muted-foreground">Lv {p.level} · {p.xp ?? 0} XP · {p.points} نقطة {p.discord_username && `· ${p.discord_username}`}</div>
+                  </div>
+                </div>
+                <div className="flex gap-2 shrink-0 items-center">
+                  <select value={roles[p.user_id] ?? "user"} onChange={(e) => changeRole(p.user_id, e.target.value)} className="bg-background border border-border rounded px-2 py-1 text-sm">
+                    <option value="user">عضو</option>
+                    <option value="moderator">مشرف</option>
+                    <option value="admin">أدمن</option>
+                  </select>
+                  <Button variant="outline" size="sm" onClick={() => startEdit(p)}>تعديل</Button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+        {list.length === 0 && <p className="text-center text-muted-foreground py-8 text-sm">لا توجد نتائج</p>}
+      </div>
+    </div>
+  );
+}
