@@ -10,7 +10,7 @@ import { toast, Toaster } from "sonner";
 import { Trash2, Plus, ArrowUp, ArrowDown, Settings, Gamepad2, BarChart3, Sparkles, Video, Trophy, Crown, Layers, Users, Coins, ShoppingBag, Package } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { ImageUpload } from "@/components/ImageUpload";
-import { MembersAdmin, PointsAdmin, TournamentsAdmin, ShopAdmin, OrdersAdmin } from "@/routes/admin";
+import { MembersAdmin, PointsAdmin, TournamentsAdmin, ShopAdmin, OrdersAdmin, RegistrationsAdmin } from "@/routes/admin";
 
 export const Route = createFileRoute("/devk")({
   head: () => ({ meta: [{ title: "Dev Panel" }, { name: "robots", content: "noindex" }] }),
@@ -167,6 +167,7 @@ function Panel() {
             <TabsTrigger value="members" className="gap-1.5"><Users className="w-4 h-4" />الأعضاء</TabsTrigger>
             <TabsTrigger value="points" className="gap-1.5"><Coins className="w-4 h-4" />نقاط/XP</TabsTrigger>
             <TabsTrigger value="tournaments" className="gap-1.5"><Trophy className="w-4 h-4" />البطولات</TabsTrigger>
+            <TabsTrigger value="registrations" className="gap-1.5"><Users className="w-4 h-4" />تسجيلات</TabsTrigger>
             <TabsTrigger value="shop" className="gap-1.5"><ShoppingBag className="w-4 h-4" />المتجر</TabsTrigger>
             <TabsTrigger value="orders" className="gap-1.5"><Package className="w-4 h-4" />الطلبات</TabsTrigger>
           </TabsList>
@@ -363,6 +364,7 @@ function Panel() {
           <TabsContent value="members" className="mt-4"><MembersAdmin /></TabsContent>
           <TabsContent value="points" className="mt-4"><PointsAdmin /></TabsContent>
           <TabsContent value="tournaments" className="mt-4"><TournamentsAdmin /></TabsContent>
+          <TabsContent value="registrations" className="mt-4"><RegistrationsAdmin /></TabsContent>
           <TabsContent value="shop" className="mt-4"><ShopAdmin /></TabsContent>
           <TabsContent value="orders" className="mt-4"><OrdersAdmin /></TabsContent>
         </Tabs>
