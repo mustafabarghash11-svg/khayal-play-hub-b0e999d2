@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Plus, Trophy, ShoppingBag, Package, Users, Sparkles } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Trash2, Plus, Trophy, ShoppingBag, Package, Users, Sparkles, Pencil, RefreshCw, Save, X } from "lucide-react";
 import { toast, Toaster } from "sonner";
 
 export const Route = createFileRoute("/admin")({
@@ -32,19 +33,21 @@ function AdminPage() {
     <div dir="rtl" className="min-h-screen bg-background text-foreground">
       <SideNav />
       <Toaster richColors position="top-center" />
-      <section className="max-w-5xl mx-auto px-6 py-20">
-        <h1 className="text-4xl font-black mb-8">لوحة إدارة المجتمع</h1>
+      <section className="max-w-7xl mx-auto px-4 md:px-6 py-12">
+        <h1 className="text-3xl md:text-4xl font-black mb-6">لوحة إدارة المجتمع</h1>
         <Tabs defaultValue="members">
           <TabsList className="mb-6 flex-wrap h-auto">
             <TabsTrigger value="members"><Users className="w-4 h-4 ml-1" /> الأعضاء</TabsTrigger>
             <TabsTrigger value="points"><Sparkles className="w-4 h-4 ml-1" /> نقاط و XP</TabsTrigger>
             <TabsTrigger value="tournaments"><Trophy className="w-4 h-4 ml-1" /> البطولات</TabsTrigger>
+            <TabsTrigger value="registrations"><Users className="w-4 h-4 ml-1" /> التسجيلات</TabsTrigger>
             <TabsTrigger value="shop"><ShoppingBag className="w-4 h-4 ml-1" /> المتجر</TabsTrigger>
             <TabsTrigger value="orders"><Package className="w-4 h-4 ml-1" /> الطلبات</TabsTrigger>
           </TabsList>
           <TabsContent value="members"><MembersAdmin /></TabsContent>
           <TabsContent value="points"><PointsAdmin /></TabsContent>
           <TabsContent value="tournaments"><TournamentsAdmin /></TabsContent>
+          <TabsContent value="registrations"><RegistrationsAdmin /></TabsContent>
           <TabsContent value="shop"><ShopAdmin /></TabsContent>
           <TabsContent value="orders"><OrdersAdmin /></TabsContent>
         </Tabs>
@@ -53,10 +56,25 @@ function AdminPage() {
   );
 }
 
+// Reusable wrapper
+function TableShell({ title, count, onReload, children }: { title: string; count: number; onReload: () => void; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl bg-card border border-border overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
+        <h3 className="font-black">{title} <span className="text-xs text-muted-foreground">({count})</span></h3>
+        <Button variant="outline" size="sm" onClick={onReload}><RefreshCw className="w-4 h-4 ml-1" /> تحديث</Button>
+      </div>
+      <div className="overflow-x-auto">{children}</div>
+    </div>
+  );
+}
+
 // ============= TOURNAMENTS =============
 export function TournamentsAdmin() {
   const [list, setList] = useState<any[]>([]);
   const [form, setForm] = useState({ title: "", game: "", description: "", image_url: "", start_date: "", max_participants: 16, prize: "", status: "open" });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
 
   async function load() {
     const { data } = await supabase.from("tournaments").select("*").order("start_date", { ascending: false });
@@ -74,19 +92,34 @@ export function TournamentsAdmin() {
     const { error } = await supabase.from("tournaments").delete().eq("id", id);
     if (error) toast.error(error.message); else { toast.success("تم الحذف"); load(); }
   }
-  async function setStatus(id: string, status: string) {
-    const { error } = await supabase.from("tournaments").update({ status: status as any }).eq("id", id);
-    if (error) toast.error(error.message); else load();
+  function startEdit(t: any) {
+    setEditingId(t.id);
+    setEditForm({
+      title: t.title, game: t.game, description: t.description ?? "", image_url: t.image_url ?? "",
+      start_date: t.start_date ? new Date(t.start_date).toISOString().slice(0, 16) : "",
+      max_participants: t.max_participants, prize: t.prize ?? "", status: t.status,
+    });
+  }
+  async function saveEdit() {
+    if (!editingId) return;
+    const { error } = await supabase.from("tournaments").update({
+      title: editForm.title, game: editForm.game, description: editForm.description || null,
+      image_url: editForm.image_url || null,
+      start_date: editForm.start_date ? new Date(editForm.start_date).toISOString() : new Date().toISOString(),
+      max_participants: Number(editForm.max_participants) || 16,
+      prize: editForm.prize || null, status: editForm.status as any,
+    }).eq("id", editingId);
+    if (error) toast.error(error.message); else { toast.success("تم الحفظ"); setEditingId(null); load(); }
   }
 
   return (
     <div className="space-y-6">
       <div className="rounded-2xl bg-card border border-border p-5 space-y-3">
-        <h3 className="font-black mb-2">إضافة بطولة</h3>
-        <div className="grid sm:grid-cols-2 gap-3">
-          <div><Label>العنوان</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
-          <div><Label>اللعبة</Label><Input value={form.game} onChange={(e) => setForm({ ...form, game: e.target.value })} /></div>
-          <div><Label>التاريخ والوقت</Label><Input type="datetime-local" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} /></div>
+        <h3 className="font-black mb-2">إضافة بطولة جديدة</h3>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div><Label>العنوان *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
+          <div><Label>اللعبة *</Label><Input value={form.game} onChange={(e) => setForm({ ...form, game: e.target.value })} /></div>
+          <div><Label>التاريخ *</Label><Input type="datetime-local" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} /></div>
           <div><Label>الحد الأقصى</Label><Input type="number" min={2} value={form.max_participants} onChange={(e) => setForm({ ...form, max_participants: +e.target.value })} /></div>
           <div><Label>الجائزة</Label><Input value={form.prize} onChange={(e) => setForm({ ...form, prize: e.target.value })} /></div>
           <div><Label>رابط الصورة</Label><Input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} /></div>
@@ -95,27 +128,119 @@ export function TournamentsAdmin() {
         <Button onClick={add} className="bg-accent text-accent-foreground"><Plus className="w-4 h-4 ml-1" /> إضافة</Button>
       </div>
 
-      <div className="space-y-2">
-        {list.map((t) => (
-          <div key={t.id} className="rounded-xl bg-card border border-border p-4 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="font-bold truncate">{t.title} <span className="text-xs text-muted-foreground">· {t.game}</span></div>
-              <div className="text-xs text-muted-foreground">{new Date(t.start_date).toLocaleString("ar")}</div>
-            </div>
-            <div className="flex gap-2 shrink-0">
-              <select value={t.status} onChange={(e) => setStatus(t.id, e.target.value)} className="bg-background border border-border rounded px-2 text-sm">
-                <option value="upcoming">قادمة</option>
-                <option value="open">مفتوحة</option>
-                <option value="in_progress">جارية</option>
-                <option value="completed">منتهية</option>
-                <option value="cancelled">ملغاة</option>
-              </select>
-              <Button variant="ghost" size="icon" onClick={() => remove(t.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
-            </div>
-          </div>
-        ))}
-      </div>
+      <TableShell title="جدول البطولات" count={list.length} onReload={load}>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>الصورة</TableHead>
+              <TableHead>العنوان</TableHead>
+              <TableHead>اللعبة</TableHead>
+              <TableHead>التاريخ</TableHead>
+              <TableHead>الحد</TableHead>
+              <TableHead>الجائزة</TableHead>
+              <TableHead>الحالة</TableHead>
+              <TableHead>الوصف</TableHead>
+              <TableHead className="text-left">إجراءات</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {list.length === 0 && <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">لا توجد بطولات</TableCell></TableRow>}
+            {list.map((t) => editingId === t.id ? (
+              <TableRow key={t.id} className="bg-muted/20">
+                <TableCell><Input value={editForm.image_url} onChange={(e) => setEditForm({ ...editForm, image_url: e.target.value })} className="w-32" /></TableCell>
+                <TableCell><Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} /></TableCell>
+                <TableCell><Input value={editForm.game} onChange={(e) => setEditForm({ ...editForm, game: e.target.value })} /></TableCell>
+                <TableCell><Input type="datetime-local" value={editForm.start_date} onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })} /></TableCell>
+                <TableCell><Input type="number" value={editForm.max_participants} onChange={(e) => setEditForm({ ...editForm, max_participants: +e.target.value })} className="w-20" /></TableCell>
+                <TableCell><Input value={editForm.prize} onChange={(e) => setEditForm({ ...editForm, prize: e.target.value })} /></TableCell>
+                <TableCell>
+                  <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })} className="bg-background border border-border rounded px-2 py-1 text-sm">
+                    <option value="upcoming">قادمة</option><option value="open">مفتوحة</option><option value="in_progress">جارية</option><option value="completed">منتهية</option><option value="cancelled">ملغاة</option>
+                  </select>
+                </TableCell>
+                <TableCell><Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={1} className="min-w-48" /></TableCell>
+                <TableCell><div className="flex gap-1">
+                  <Button size="icon" variant="ghost" onClick={saveEdit}><Save className="w-4 h-4 text-green-500" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => setEditingId(null)}><X className="w-4 h-4" /></Button>
+                </div></TableCell>
+              </TableRow>
+            ) : (
+              <TableRow key={t.id}>
+                <TableCell>{t.image_url ? <img src={t.image_url} alt="" className="w-12 h-12 object-cover rounded" /> : <span className="text-muted-foreground text-xs">—</span>}</TableCell>
+                <TableCell className="font-bold">{t.title}</TableCell>
+                <TableCell>{t.game}</TableCell>
+                <TableCell className="text-xs whitespace-nowrap">{new Date(t.start_date).toLocaleString("ar")}</TableCell>
+                <TableCell>{t.max_participants}</TableCell>
+                <TableCell className="text-xs">{t.prize ?? "—"}</TableCell>
+                <TableCell><span className="text-xs px-2 py-1 rounded bg-muted">{t.status}</span></TableCell>
+                <TableCell className="text-xs max-w-xs truncate">{t.description ?? "—"}</TableCell>
+                <TableCell><div className="flex gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => startEdit(t)}><Pencil className="w-4 h-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => remove(t.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                </div></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableShell>
     </div>
+  );
+}
+
+// ============= REGISTRATIONS =============
+export function RegistrationsAdmin() {
+  const [list, setList] = useState<any[]>([]);
+  async function load() {
+    const { data } = await supabase
+      .from("tournament_registrations")
+      .select("id, in_game_id, notes, created_at, user_id, tournament_id, tournaments(title, game)")
+      .order("created_at", { ascending: false });
+    if (data && data.length) {
+      const userIds = Array.from(new Set(data.map((d: any) => d.user_id)));
+      const { data: profs } = await supabase.from("profiles").select("user_id, display_name, discord_username").in("user_id", userIds);
+      const map: Record<string, any> = {};
+      (profs ?? []).forEach((p: any) => { map[p.user_id] = p; });
+      setList(data.map((d: any) => ({ ...d, profile: map[d.user_id] })));
+    } else setList([]);
+  }
+  useEffect(() => { load(); }, []);
+  async function remove(id: string) {
+    if (!confirm("حذف التسجيل؟")) return;
+    const { error } = await supabase.from("tournament_registrations").delete().eq("id", id);
+    if (error) toast.error(error.message); else { toast.success("حُذف"); load(); }
+  }
+  return (
+    <TableShell title="جدول تسجيلات البطولات" count={list.length} onReload={load}>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>العضو</TableHead>
+            <TableHead>Discord</TableHead>
+            <TableHead>البطولة</TableHead>
+            <TableHead>اللعبة</TableHead>
+            <TableHead>ID داخل اللعبة</TableHead>
+            <TableHead>ملاحظات</TableHead>
+            <TableHead>التاريخ</TableHead>
+            <TableHead></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {list.length === 0 && <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">لا توجد تسجيلات</TableCell></TableRow>}
+          {list.map((r) => (
+            <TableRow key={r.id}>
+              <TableCell className="font-bold">{r.profile?.display_name ?? "—"}</TableCell>
+              <TableCell className="text-xs">{r.profile?.discord_username ?? "—"}</TableCell>
+              <TableCell>{r.tournaments?.title ?? "—"}</TableCell>
+              <TableCell>{r.tournaments?.game ?? "—"}</TableCell>
+              <TableCell className="text-xs">{r.in_game_id ?? "—"}</TableCell>
+              <TableCell className="text-xs max-w-xs truncate">{r.notes ?? "—"}</TableCell>
+              <TableCell className="text-xs whitespace-nowrap">{new Date(r.created_at).toLocaleString("ar")}</TableCell>
+              <TableCell><Button size="icon" variant="ghost" onClick={() => remove(r.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button></TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableShell>
   );
 }
 
@@ -142,23 +267,17 @@ export function ShopAdmin() {
     const { error } = await supabase.from("shop_items").delete().eq("id", id);
     if (error) toast.error(error.message); else { toast.success("حُذف"); load(); }
   }
-  async function toggleActive(id: string, v: boolean) {
-    await supabase.from("shop_items").update({ is_active: v }).eq("id", id);
-    load();
-  }
+  async function toggleActive(id: string, v: boolean) { await supabase.from("shop_items").update({ is_active: v }).eq("id", id); load(); }
   function startEdit(it: any) {
     setEditingId(it.id);
-    setEditForm({ name: it.name, description: it.description ?? "", image_url: it.image_url ?? "", price_points: it.price_points, stock: it.stock });
+    setEditForm({ name: it.name, description: it.description ?? "", image_url: it.image_url ?? "", price_points: it.price_points, stock: it.stock, is_active: it.is_active });
   }
   async function saveEdit() {
     if (!editingId) return;
     if (!editForm.name) return toast.error("الاسم مطلوب");
     const { error } = await supabase.from("shop_items").update({
-      name: editForm.name,
-      description: editForm.description,
-      image_url: editForm.image_url,
-      price_points: Number(editForm.price_points),
-      stock: Number(editForm.stock),
+      name: editForm.name, description: editForm.description || null, image_url: editForm.image_url || null,
+      price_points: Number(editForm.price_points), stock: Number(editForm.stock), is_active: !!editForm.is_active,
     }).eq("id", editingId);
     if (error) toast.error(error.message); else { toast.success("تم الحفظ"); setEditingId(null); load(); }
   }
@@ -167,49 +286,68 @@ export function ShopAdmin() {
     <div className="space-y-6">
       <div className="rounded-2xl bg-card border border-border p-5 space-y-3">
         <h3 className="font-black mb-2">إضافة منتج</h3>
-        <div className="grid sm:grid-cols-2 gap-3">
-          <div><Label>الاسم</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div><Label>الاسم *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
           <div><Label>السعر بالنقاط</Label><Input type="number" min={0} value={form.price_points} onChange={(e) => setForm({ ...form, price_points: +e.target.value })} /></div>
-          <div><Label>الكمية (-1 لا محدودة)</Label><Input type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: +e.target.value })} /></div>
+          <div><Label>الكمية (-1 = لا محدودة)</Label><Input type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: +e.target.value })} /></div>
           <div><Label>رابط الصورة</Label><Input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} /></div>
         </div>
         <div><Label>الوصف</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} /></div>
         <Button onClick={add} className="bg-accent text-accent-foreground"><Plus className="w-4 h-4 ml-1" /> إضافة</Button>
       </div>
 
-      <div className="space-y-2">
-        {list.map((it) => (
-          <div key={it.id} className="rounded-xl bg-card border border-border p-4">
-            {editingId === it.id ? (
-              <div className="space-y-3">
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <div><Label>الاسم</Label><Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></div>
-                  <div><Label>السعر بالنقاط</Label><Input type="number" min={0} value={editForm.price_points} onChange={(e) => setEditForm({ ...editForm, price_points: +e.target.value })} /></div>
-                  <div><Label>الكمية (-1 لا محدودة)</Label><Input type="number" value={editForm.stock} onChange={(e) => setEditForm({ ...editForm, stock: +e.target.value })} /></div>
-                  <div><Label>رابط الصورة</Label><Input value={editForm.image_url} onChange={(e) => setEditForm({ ...editForm, image_url: e.target.value })} /></div>
-                </div>
-                <div><Label>الوصف</Label><Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={2} /></div>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={saveEdit} className="bg-accent text-accent-foreground">حفظ</Button>
-                  <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>إلغاء</Button>
-                </div>
-              </div>
+      <TableShell title="جدول منتجات المتجر" count={list.length} onReload={load}>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>الصورة</TableHead>
+              <TableHead>الاسم</TableHead>
+              <TableHead>السعر</TableHead>
+              <TableHead>الكمية</TableHead>
+              <TableHead>مفعل</TableHead>
+              <TableHead>الوصف</TableHead>
+              <TableHead>أنشئ في</TableHead>
+              <TableHead></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {list.length === 0 && <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">لا توجد منتجات</TableCell></TableRow>}
+            {list.map((it) => editingId === it.id ? (
+              <TableRow key={it.id} className="bg-muted/20">
+                <TableCell><Input value={editForm.image_url} onChange={(e) => setEditForm({ ...editForm, image_url: e.target.value })} className="w-32" /></TableCell>
+                <TableCell><Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></TableCell>
+                <TableCell><Input type="number" value={editForm.price_points} onChange={(e) => setEditForm({ ...editForm, price_points: +e.target.value })} className="w-24" /></TableCell>
+                <TableCell><Input type="number" value={editForm.stock} onChange={(e) => setEditForm({ ...editForm, stock: +e.target.value })} className="w-24" /></TableCell>
+                <TableCell><input type="checkbox" checked={!!editForm.is_active} onChange={(e) => setEditForm({ ...editForm, is_active: e.target.checked })} /></TableCell>
+                <TableCell><Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={1} className="min-w-48" /></TableCell>
+                <TableCell className="text-xs">{new Date(it.created_at).toLocaleDateString("ar")}</TableCell>
+                <TableCell><div className="flex gap-1">
+                  <Button size="icon" variant="ghost" onClick={saveEdit}><Save className="w-4 h-4 text-green-500" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => setEditingId(null)}><X className="w-4 h-4" /></Button>
+                </div></TableCell>
+              </TableRow>
             ) : (
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="font-bold truncate">{it.name}</div>
-                  <div className="text-xs text-muted-foreground">{it.price_points} نقطة · كمية: {it.stock < 0 ? "∞" : it.stock} {!it.is_active && "· معطل"}</div>
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  <Button variant="outline" size="sm" onClick={() => startEdit(it)}>تعديل</Button>
-                  <Button variant="outline" size="sm" onClick={() => toggleActive(it.id, !it.is_active)}>{it.is_active ? "إخفاء" : "تفعيل"}</Button>
-                  <Button variant="ghost" size="icon" onClick={() => remove(it.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+              <TableRow key={it.id}>
+                <TableCell>{it.image_url ? <img src={it.image_url} alt="" className="w-12 h-12 object-cover rounded" /> : <span className="text-muted-foreground text-xs">—</span>}</TableCell>
+                <TableCell className="font-bold">{it.name}</TableCell>
+                <TableCell>{it.price_points}</TableCell>
+                <TableCell>{it.stock < 0 ? "∞" : it.stock}</TableCell>
+                <TableCell>
+                  <button onClick={() => toggleActive(it.id, !it.is_active)} className={`text-xs px-2 py-1 rounded ${it.is_active ? "bg-green-500/20 text-green-500" : "bg-muted text-muted-foreground"}`}>
+                    {it.is_active ? "نعم" : "لا"}
+                  </button>
+                </TableCell>
+                <TableCell className="text-xs max-w-xs truncate">{it.description ?? "—"}</TableCell>
+                <TableCell className="text-xs whitespace-nowrap">{new Date(it.created_at).toLocaleDateString("ar")}</TableCell>
+                <TableCell><div className="flex gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => startEdit(it)}><Pencil className="w-4 h-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => remove(it.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                </div></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableShell>
     </div>
   );
 }
@@ -221,13 +359,15 @@ export function OrdersAdmin() {
   async function load() {
     const { data } = await supabase
       .from("shop_orders")
-      .select("id, points_spent, status, user_notes, admin_notes, created_at, shop_items(name), user_id, profiles!inner(display_name, discord_username)")
+      .select("*, shop_items(name, image_url)")
       .order("created_at", { ascending: false });
-    // profiles join via user_id requires foreign key — fallback simple query
-    if (!data) {
-      const { data: simple } = await supabase.from("shop_orders").select("*, shop_items(name)").order("created_at", { ascending: false });
-      setList(simple ?? []);
-    } else setList(data);
+    if (data && data.length) {
+      const userIds = Array.from(new Set(data.map((d: any) => d.user_id)));
+      const { data: profs } = await supabase.from("profiles").select("user_id, display_name, discord_username").in("user_id", userIds);
+      const map: Record<string, any> = {};
+      (profs ?? []).forEach((p: any) => { map[p.user_id] = p; });
+      setList(data.map((d: any) => ({ ...d, profile: map[d.user_id] })));
+    } else setList([]);
   }
   useEffect(() => { load(); }, []);
 
@@ -235,28 +375,59 @@ export function OrdersAdmin() {
     const { error } = await supabase.from("shop_orders").update({ status: status as any }).eq("id", id);
     if (error) toast.error(error.message); else { toast.success("تحدّث"); load(); }
   }
+  async function saveAdminNote(id: string, note: string) {
+    const { error } = await supabase.from("shop_orders").update({ admin_notes: note }).eq("id", id);
+    if (error) toast.error(error.message); else toast.success("تم حفظ الملاحظة");
+  }
 
   return (
-    <div className="space-y-2">
-      {list.length === 0 && <p className="text-muted-foreground text-center py-10">لا توجد طلبات.</p>}
-      {list.map((o) => (
-        <div key={o.id} className="rounded-xl bg-card border border-border p-4">
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <div className="min-w-0">
-              <div className="font-bold">{o.shop_items?.name ?? "—"}</div>
-              <div className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("ar")} · {o.points_spent} نقطة</div>
-              {o.profiles && <div className="text-xs mt-1">العضو: <b>{o.profiles.display_name}</b> {o.profiles.discord_username && `· Discord: ${o.profiles.discord_username}`}</div>}
-            </div>
-            <select value={o.status} onChange={(e) => setStatus(o.id, e.target.value)} className="bg-background border border-border rounded px-2 text-sm shrink-0">
-              <option value="pending">قيد المعالجة</option>
-              <option value="fulfilled">تم التسليم</option>
-              <option value="cancelled">ملغي</option>
-            </select>
-          </div>
-          {o.user_notes && <div className="text-xs bg-background/50 rounded p-2 mt-2"><b>ملاحظة العضو:</b> {o.user_notes}</div>}
-        </div>
-      ))}
-    </div>
+    <TableShell title="جدول طلبات المتجر" count={list.length} onReload={load}>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>المنتج</TableHead>
+            <TableHead>العضو</TableHead>
+            <TableHead>Discord</TableHead>
+            <TableHead>النقاط</TableHead>
+            <TableHead>الحالة</TableHead>
+            <TableHead>ملاحظة العضو</TableHead>
+            <TableHead>ملاحظة الإدارة</TableHead>
+            <TableHead>التاريخ</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {list.length === 0 && <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">لا توجد طلبات</TableCell></TableRow>}
+          {list.map((o) => (
+            <TableRow key={o.id}>
+              <TableCell className="font-bold flex items-center gap-2">
+                {o.shop_items?.image_url && <img src={o.shop_items.image_url} alt="" className="w-8 h-8 object-cover rounded" />}
+                {o.shop_items?.name ?? "—"}
+              </TableCell>
+              <TableCell>{o.profile?.display_name ?? "—"}</TableCell>
+              <TableCell className="text-xs">{o.profile?.discord_username ?? "—"}</TableCell>
+              <TableCell>{o.points_spent}</TableCell>
+              <TableCell>
+                <select value={o.status} onChange={(e) => setStatus(o.id, e.target.value)} className="bg-background border border-border rounded px-2 py-1 text-sm">
+                  <option value="pending">قيد المعالجة</option>
+                  <option value="fulfilled">تم التسليم</option>
+                  <option value="cancelled">ملغي</option>
+                </select>
+              </TableCell>
+              <TableCell className="text-xs max-w-xs">{o.user_notes ?? "—"}</TableCell>
+              <TableCell>
+                <Input
+                  defaultValue={o.admin_notes ?? ""}
+                  placeholder="أضف ملاحظة..."
+                  onBlur={(e) => { if (e.target.value !== (o.admin_notes ?? "")) saveAdminNote(o.id, e.target.value); }}
+                  className="min-w-40 text-xs"
+                />
+              </TableCell>
+              <TableCell className="text-xs whitespace-nowrap">{new Date(o.created_at).toLocaleString("ar")}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableShell>
   );
 }
 
@@ -268,9 +439,13 @@ export function PointsAdmin() {
   const [xpAmount, setXpAmount] = useState(100);
 
   async function find() {
-    const { data } = await supabase.from("profiles").select("user_id, display_name, points, level, xp").ilike("display_name", `%${search}%`).limit(20);
+    let q = supabase.from("profiles").select("user_id, display_name, discord_username, avatar_url, points, level, xp").order("xp", { ascending: false }).limit(50);
+    if (search.trim()) q = supabase.from("profiles").select("user_id, display_name, discord_username, avatar_url, points, level, xp").or(`display_name.ilike.%${search}%,discord_username.ilike.%${search}%`).limit(50);
+    const { data } = await q;
     setResults(data ?? []);
   }
+  useEffect(() => { find(); }, []);
+
   async function awardPoints(userId: string, delta: number) {
     const { data: p } = await supabase.from("profiles").select("points").eq("user_id", userId).maybeSingle();
     if (!p) return toast.error("لم يُعثر");
@@ -291,45 +466,53 @@ export function PointsAdmin() {
       <div className="rounded-2xl bg-card border border-border p-5 space-y-3">
         <h3 className="font-black">منح / خصم نقاط و XP</h3>
         <div className="flex gap-2">
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ابحث باسم العضو..." onKeyDown={(e) => e.key === "Enter" && find()} />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ابحث باسم العضو أو الديسكورد..." onKeyDown={(e) => e.key === "Enter" && find()} />
           <Button onClick={find} className="bg-accent text-accent-foreground">بحث</Button>
         </div>
         <div className="grid sm:grid-cols-2 gap-3">
-          <div className="flex items-center gap-2">
-            <Label className="shrink-0">نقاط المتجر:</Label>
-            <Input type="number" value={pointsAmount} onChange={(e) => setPointsAmount(+e.target.value)} />
-          </div>
-          <div className="flex items-center gap-2">
-            <Label className="shrink-0">XP:</Label>
-            <Input type="number" value={xpAmount} onChange={(e) => setXpAmount(+e.target.value)} />
-          </div>
+          <div className="flex items-center gap-2"><Label className="shrink-0">قيمة نقاط:</Label><Input type="number" value={pointsAmount} onChange={(e) => setPointsAmount(+e.target.value)} /></div>
+          <div className="flex items-center gap-2"><Label className="shrink-0">قيمة XP:</Label><Input type="number" value={xpAmount} onChange={(e) => setXpAmount(+e.target.value)} /></div>
         </div>
       </div>
-      <div className="space-y-2">
-        {results.length === 0 && <p className="text-muted-foreground text-center py-6 text-sm">ابحث عن عضو لعرض النتائج</p>}
-        {results.map((r) => (
-          <div key={r.user_id} className="rounded-xl bg-card border border-border p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-bold">{r.display_name}</div>
-                <div className="text-xs text-muted-foreground">Lv {r.level} · {r.points} نقطة · {r.xp ?? 0} XP</div>
-              </div>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-2">
-              <div className="flex gap-2 items-center">
-                <span className="text-xs text-muted-foreground w-14">نقاط:</span>
-                <Button size="sm" variant="outline" className="flex-1" onClick={() => awardPoints(r.user_id, -pointsAmount)}>− {pointsAmount}</Button>
-                <Button size="sm" className="flex-1 bg-accent text-accent-foreground" onClick={() => awardPoints(r.user_id, pointsAmount)}>+ {pointsAmount}</Button>
-              </div>
-              <div className="flex gap-2 items-center">
-                <span className="text-xs text-muted-foreground w-14">XP:</span>
-                <Button size="sm" variant="outline" className="flex-1" onClick={() => awardXp(r.user_id, -xpAmount)}>− {xpAmount}</Button>
-                <Button size="sm" className="flex-1 bg-primary text-primary-foreground" onClick={() => awardXp(r.user_id, xpAmount)}>+ {xpAmount}</Button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+
+      <TableShell title="جدول الأعضاء" count={results.length} onReload={find}>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>العضو</TableHead>
+              <TableHead>Discord</TableHead>
+              <TableHead>المستوى</TableHead>
+              <TableHead>XP</TableHead>
+              <TableHead>النقاط</TableHead>
+              <TableHead>إجراء النقاط</TableHead>
+              <TableHead>إجراء XP</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {results.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">لا توجد نتائج</TableCell></TableRow>}
+            {results.map((r) => (
+              <TableRow key={r.user_id}>
+                <TableCell className="flex items-center gap-2 font-bold">
+                  {r.avatar_url && <img src={r.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />}
+                  {r.display_name}
+                </TableCell>
+                <TableCell className="text-xs">{r.discord_username ?? "—"}</TableCell>
+                <TableCell>{r.level}</TableCell>
+                <TableCell>{r.xp ?? 0}</TableCell>
+                <TableCell>{r.points}</TableCell>
+                <TableCell><div className="flex gap-1">
+                  <Button size="sm" variant="outline" onClick={() => awardPoints(r.user_id, -pointsAmount)}>− {pointsAmount}</Button>
+                  <Button size="sm" className="bg-accent text-accent-foreground" onClick={() => awardPoints(r.user_id, pointsAmount)}>+ {pointsAmount}</Button>
+                </div></TableCell>
+                <TableCell><div className="flex gap-1">
+                  <Button size="sm" variant="outline" onClick={() => awardXp(r.user_id, -xpAmount)}>− {xpAmount}</Button>
+                  <Button size="sm" className="bg-primary text-primary-foreground" onClick={() => awardXp(r.user_id, xpAmount)}>+ {xpAmount}</Button>
+                </div></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableShell>
     </div>
   );
 }
@@ -343,8 +526,8 @@ export function MembersAdmin() {
   const [roles, setRoles] = useState<Record<string, string>>({});
 
   async function load() {
-    let q = supabase.from("profiles").select("*").order("xp", { ascending: false }).limit(50);
-    if (search.trim()) q = supabase.from("profiles").select("*").or(`display_name.ilike.%${search}%,discord_username.ilike.%${search}%`).limit(50);
+    let q = supabase.from("profiles").select("*").order("xp", { ascending: false }).limit(100);
+    if (search.trim()) q = supabase.from("profiles").select("*").or(`display_name.ilike.%${search}%,discord_username.ilike.%${search}%`).limit(100);
     const { data } = await q;
     setList(data ?? []);
     if (data && data.length) {
@@ -359,23 +542,16 @@ export function MembersAdmin() {
   function startEdit(p: any) {
     setEditingId(p.user_id);
     setEditForm({
-      display_name: p.display_name ?? "",
-      discord_username: p.discord_username ?? "",
-      favorite_game: p.favorite_game ?? "",
-      bio: p.bio ?? "",
-      avatar_url: p.avatar_url ?? "",
-      points: p.points ?? 0,
-      xp: p.xp ?? 0,
-      level: p.level ?? 1,
+      display_name: p.display_name ?? "", discord_username: p.discord_username ?? "",
+      favorite_game: p.favorite_game ?? "", bio: p.bio ?? "", avatar_url: p.avatar_url ?? "",
+      points: p.points ?? 0, xp: p.xp ?? 0, level: p.level ?? 1,
     });
   }
   async function saveEdit() {
     if (!editingId) return;
     const { error } = await supabase.from("profiles").update({
-      display_name: editForm.display_name,
-      discord_username: editForm.discord_username || null,
-      favorite_game: editForm.favorite_game || null,
-      bio: editForm.bio || null,
+      display_name: editForm.display_name, discord_username: editForm.discord_username || null,
+      favorite_game: editForm.favorite_game || null, bio: editForm.bio || null,
       avatar_url: editForm.avatar_url || null,
       points: Math.max(0, Number(editForm.points) || 0),
       xp: Math.max(0, Number(editForm.xp) || 0),
@@ -398,49 +574,68 @@ export function MembersAdmin() {
         </div>
       </div>
 
-      <div className="space-y-2">
-        {list.map((p) => (
-          <div key={p.user_id} className="rounded-xl bg-card border border-border p-4">
-            {editingId === p.user_id ? (
-              <div className="space-y-3">
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <div><Label>الاسم</Label><Input value={editForm.display_name} onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })} /></div>
-                  <div><Label>Discord</Label><Input value={editForm.discord_username} onChange={(e) => setEditForm({ ...editForm, discord_username: e.target.value })} /></div>
-                  <div><Label>اللعبة المفضلة</Label><Input value={editForm.favorite_game} onChange={(e) => setEditForm({ ...editForm, favorite_game: e.target.value })} /></div>
-                  <div><Label>رابط الصورة</Label><Input value={editForm.avatar_url} onChange={(e) => setEditForm({ ...editForm, avatar_url: e.target.value })} /></div>
-                  <div><Label>النقاط</Label><Input type="number" value={editForm.points} onChange={(e) => setEditForm({ ...editForm, points: +e.target.value })} /></div>
-                  <div><Label>XP</Label><Input type="number" value={editForm.xp} onChange={(e) => setEditForm({ ...editForm, xp: +e.target.value })} /></div>
-                  <div><Label>المستوى</Label><Input type="number" min={1} value={editForm.level} onChange={(e) => setEditForm({ ...editForm, level: +e.target.value })} /></div>
-                </div>
-                <div><Label>نبذة</Label><Textarea value={editForm.bio} onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })} rows={2} /></div>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={saveEdit} className="bg-accent text-accent-foreground">حفظ</Button>
-                  <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>إلغاء</Button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  {p.avatar_url && <img src={p.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />}
-                  <div className="min-w-0">
-                    <div className="font-bold truncate">{p.display_name}</div>
-                    <div className="text-xs text-muted-foreground">Lv {p.level} · {p.xp ?? 0} XP · {p.points} نقطة {p.discord_username && `· ${p.discord_username}`}</div>
-                  </div>
-                </div>
-                <div className="flex gap-2 shrink-0 items-center">
+      <TableShell title="جدول الأعضاء" count={list.length} onReload={load}>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>الصورة</TableHead>
+              <TableHead>الاسم</TableHead>
+              <TableHead>Discord</TableHead>
+              <TableHead>اللعبة المفضلة</TableHead>
+              <TableHead>المستوى</TableHead>
+              <TableHead>XP</TableHead>
+              <TableHead>النقاط</TableHead>
+              <TableHead>الرتبة</TableHead>
+              <TableHead>النبذة</TableHead>
+              <TableHead>أنشئ في</TableHead>
+              <TableHead></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {list.length === 0 && <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">لا يوجد أعضاء</TableCell></TableRow>}
+            {list.map((p) => editingId === p.user_id ? (
+              <TableRow key={p.user_id} className="bg-muted/20">
+                <TableCell><Input value={editForm.avatar_url} onChange={(e) => setEditForm({ ...editForm, avatar_url: e.target.value })} className="w-32" placeholder="URL" /></TableCell>
+                <TableCell><Input value={editForm.display_name} onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })} /></TableCell>
+                <TableCell><Input value={editForm.discord_username} onChange={(e) => setEditForm({ ...editForm, discord_username: e.target.value })} /></TableCell>
+                <TableCell><Input value={editForm.favorite_game} onChange={(e) => setEditForm({ ...editForm, favorite_game: e.target.value })} /></TableCell>
+                <TableCell><Input type="number" value={editForm.level} onChange={(e) => setEditForm({ ...editForm, level: +e.target.value })} className="w-20" /></TableCell>
+                <TableCell><Input type="number" value={editForm.xp} onChange={(e) => setEditForm({ ...editForm, xp: +e.target.value })} className="w-24" /></TableCell>
+                <TableCell><Input type="number" value={editForm.points} onChange={(e) => setEditForm({ ...editForm, points: +e.target.value })} className="w-24" /></TableCell>
+                <TableCell>
                   <select value={roles[p.user_id] ?? "user"} onChange={(e) => changeRole(p.user_id, e.target.value)} className="bg-background border border-border rounded px-2 py-1 text-sm">
-                    <option value="user">عضو</option>
-                    <option value="moderator">مشرف</option>
-                    <option value="admin">أدمن</option>
+                    <option value="user">عضو</option><option value="moderator">مشرف</option><option value="admin">أدمن</option>
                   </select>
-                  <Button variant="outline" size="sm" onClick={() => startEdit(p)}>تعديل</Button>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-        {list.length === 0 && <p className="text-center text-muted-foreground py-8 text-sm">لا توجد نتائج</p>}
-      </div>
+                </TableCell>
+                <TableCell><Textarea value={editForm.bio} onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })} rows={1} className="min-w-48" /></TableCell>
+                <TableCell className="text-xs">{new Date(p.created_at).toLocaleDateString("ar")}</TableCell>
+                <TableCell><div className="flex gap-1">
+                  <Button size="icon" variant="ghost" onClick={saveEdit}><Save className="w-4 h-4 text-green-500" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => setEditingId(null)}><X className="w-4 h-4" /></Button>
+                </div></TableCell>
+              </TableRow>
+            ) : (
+              <TableRow key={p.user_id}>
+                <TableCell>{p.avatar_url ? <img src={p.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" /> : <span className="text-muted-foreground text-xs">—</span>}</TableCell>
+                <TableCell className="font-bold">{p.display_name}</TableCell>
+                <TableCell className="text-xs">{p.discord_username ?? "—"}</TableCell>
+                <TableCell className="text-xs">{p.favorite_game ?? "—"}</TableCell>
+                <TableCell>{p.level}</TableCell>
+                <TableCell>{p.xp ?? 0}</TableCell>
+                <TableCell>{p.points}</TableCell>
+                <TableCell>
+                  <select value={roles[p.user_id] ?? "user"} onChange={(e) => changeRole(p.user_id, e.target.value)} className="bg-background border border-border rounded px-2 py-1 text-sm">
+                    <option value="user">عضو</option><option value="moderator">مشرف</option><option value="admin">أدمن</option>
+                  </select>
+                </TableCell>
+                <TableCell className="text-xs max-w-xs truncate">{p.bio ?? "—"}</TableCell>
+                <TableCell className="text-xs whitespace-nowrap">{new Date(p.created_at).toLocaleDateString("ar")}</TableCell>
+                <TableCell><Button size="icon" variant="ghost" onClick={() => startEdit(p)}><Pencil className="w-4 h-4" /></Button></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableShell>
     </div>
   );
 }
