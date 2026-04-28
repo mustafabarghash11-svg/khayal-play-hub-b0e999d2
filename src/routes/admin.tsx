@@ -34,17 +34,19 @@ function AdminPage() {
       <Toaster richColors position="top-center" />
       <section className="max-w-5xl mx-auto px-6 py-20">
         <h1 className="text-4xl font-black mb-8">لوحة إدارة المجتمع</h1>
-        <Tabs defaultValue="tournaments">
-          <TabsList className="mb-6">
-            <TabsTrigger value="tournaments">البطولات</TabsTrigger>
-            <TabsTrigger value="shop">المتجر</TabsTrigger>
-            <TabsTrigger value="orders">الطلبات</TabsTrigger>
-            <TabsTrigger value="points">منح نقاط</TabsTrigger>
+        <Tabs defaultValue="members">
+          <TabsList className="mb-6 flex-wrap h-auto">
+            <TabsTrigger value="members"><Users className="w-4 h-4 ml-1" /> الأعضاء</TabsTrigger>
+            <TabsTrigger value="points"><Sparkles className="w-4 h-4 ml-1" /> نقاط و XP</TabsTrigger>
+            <TabsTrigger value="tournaments"><Trophy className="w-4 h-4 ml-1" /> البطولات</TabsTrigger>
+            <TabsTrigger value="shop"><ShoppingBag className="w-4 h-4 ml-1" /> المتجر</TabsTrigger>
+            <TabsTrigger value="orders"><Package className="w-4 h-4 ml-1" /> الطلبات</TabsTrigger>
           </TabsList>
+          <TabsContent value="members"><MembersAdmin /></TabsContent>
+          <TabsContent value="points"><PointsAdmin /></TabsContent>
           <TabsContent value="tournaments"><TournamentsAdmin /></TabsContent>
           <TabsContent value="shop"><ShopAdmin /></TabsContent>
           <TabsContent value="orders"><OrdersAdmin /></TabsContent>
-          <TabsContent value="points"><PointsAdmin /></TabsContent>
         </Tabs>
       </section>
     </div>
