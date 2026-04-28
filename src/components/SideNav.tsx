@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { Menu, X, User as UserIcon, Shield } from "lucide-react";
+import { Menu, X, User as UserIcon } from "lucide-react";
 import { useSiteData, safeHref } from "@/lib/khayal-store";
 import { useAuth } from "@/hooks/useAuth";
 import { KhayalLogo } from "./KhayalLogo";
@@ -8,7 +8,7 @@ import { KhayalLogo } from "./KhayalLogo";
 export function SideNav() {
   const [open, setOpen] = useState(false);
   const [data] = useSiteData();
-  const { user, profile, isAdmin } = useAuth();
+  const { user, profile } = useAuth();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -75,13 +75,6 @@ export function SideNav() {
           {mounted && user && (
             <NavLink to="/account" onClick={() => setOpen(false)}>حسابي</NavLink>
           )}
-          {mounted && isAdmin && (
-            <Link
-              to="/devk"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2 px-4 py-3 rounded-lg text-base text-yellow-500 hover:bg-yellow-500/10 transition-colors"
-            >
-          )}
 
           {data.customSections.length > 0 && (
             <div className="pt-3 mt-3 border-t border-border">
@@ -128,4 +121,4 @@ function NavLink({ to, onClick, children }: { to: NavTo; onClick: () => void; ch
       {children}
     </Link>
   );
-}
+                                                          }
